@@ -9,10 +9,10 @@ typedef struct {
 } pt_str;
 
 pt_str *pt_str_new(void);
-pt_str *pt_str_from(char *str);
+pt_str *pt_str_from(const char *str);
 void pt_str_init(pt_str *s);
 void pt_str_free(pt_str *s);
-void pt_str_append(pt_str *s, const char *suffix);
+int pt_str_append(pt_str *s, const char *suffix);
 void pt_str_append_char(pt_str *s, char c);
 void pt_str_delete_char(pt_str *s);
 

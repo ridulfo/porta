@@ -8,47 +8,61 @@ CFLAGS       := -Wall -Wextra -Wpedantic -Wshadow -Wstrict-prototypes \
                  -Wbad-function-cast -Wvla -Wstrict-overflow=5 -Winline \
                  -Werror -std=c99 -O2 -D_POSIX_C_SOURCE=200112L
 
-DEBUG_CFLAGS := -std=c99  -g
+DEBUG_CFLAGS := -std=c99 -g
 
-# Directories (no longer “debug”!)
+# Directory layout
 BUILD_DIR    := build
-DEBUG_DIR    := debug-build
+RELEASE_DIR  := $(BUILD_DIR)/release
+DEBUG_DIR    := $(BUILD_DIR)/debug
 
-# Sources, objects, and targets
+# Sources, objects, binaries
 SRC          := main.c term.c editor.c ds.c
-OBJ          := $(SRC:%.c=$(BUILD_DIR)/%.o)
-DEBUG_OBJ    := $(SRC:%.c=$(DEBUG_DIR)/%.o)
-BIN          := $(BUILD_DIR)/porta
+
+RELEASE_OBJS := $(SRC:%.c=$(RELEASE_DIR)/%.o)
+DEBUG_OBJS   := $(SRC:%.c=$(DEBUG_DIR)/%.o)
+
+RELEASE_BIN  := $(RELEASE_DIR)/porta
 DEBUG_BIN    := $(DEBUG_DIR)/porta
 
-.PHONY: all clean debug
+TEST_MODULES := ds
+TESTS        := $(TEST_MODULES:%=$(DEBUG_DIR)/%_test)
 
-# default build
-all: $(BIN)
+.PHONY: all debug run clean test
 
-# quick “debug” build
+# default = release build
+all: $(RELEASE_BIN)
+
 debug: $(DEBUG_BIN)
 
-run: $(BIN)
-	./$(BIN)
+run: all
+	@./$(RELEASE_BIN)
 
-# Link
-$(BIN): $(OBJ) | $(BUILD_DIR)
-	$(CC) $(OBJ) -o $(BIN)
+$(RELEASE_BIN): $(RELEASE_OBJS) | $(RELEASE_DIR)
+	$(CC) $^ -o $@
 
-$(DEBUG_BIN): $(DEBUG_OBJ) | $(DEBUG_DIR)
-	$(CC) $(DEBUG_OBJ) -o $(DEBUG_BIN)
+$(DEBUG_BIN): $(DEBUG_OBJS)   | $(DEBUG_DIR)
+	$(CC) $^ -o $@
 
-# Compile into build/ and debug-build/
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+$(RELEASE_DIR)/%.o: %.c | $(RELEASE_DIR)
 	$(CC) $(CFLAGS)       -c $< -o $@
 
 $(DEBUG_DIR)/%.o: %.c | $(DEBUG_DIR)
 	$(CC) $(DEBUG_CFLAGS) -c $< -o $@
 
-# ensure directories exist
-$(BUILD_DIR) $(DEBUG_DIR):
+$(DEBUG_DIR)/%_test: %.c %.h | $(DEBUG_DIR)
+	$(CC) $(CFLAGS) -DPT_TEST -o $@ $<
+
+test: $(TESTS)
+	@echo
+	@echo "==== Running tests ===="
+	@for t in $(TESTS); do \
+	  echo "-- $$t --"; \
+	  $$t || exit 1; \
+	done
+	@echo "All tests passed."
+
+$(RELEASE_DIR) $(DEBUG_DIR):
 	mkdir -p $@
 
 clean:
-	rm -rf $(BUILD_DIR) $(DEBUG_DIR)
+	rm -rf $(BUILD_DIR)
