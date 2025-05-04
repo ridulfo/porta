@@ -55,6 +55,57 @@ static void censor_text(pt_str *text) {
   }
 }
 
+static pt_str *pt_format_string(const pt_str *input) {
+  pt_str *out = pt_str_new();
+
+  const char *p = input->data;
+  while (*p) {
+    if (*p == '#') {
+      size_t raw_count = strspn(p, "#");
+      char *nl = strchr(p, '\n');
+
+      // Heading must have a space after # and have a new line
+      if (p[raw_count] != ' ' || (!nl)) {
+        pt_str_append_char(out, *p);
+        p++;
+        continue;
+      }
+
+      // min(raw_count, PT_MAX_HEADER_SIZE)
+      size_t count =
+          raw_count > PT_MAX_HEADER_SIZE ? PT_MAX_HEADER_SIZE : raw_count;
+
+      // skip the hashes and the space
+      p += raw_count + 1;
+      const char *text_start = p;
+      size_t text_len = (size_t)(nl - text_start);
+
+      size_t level = PT_MAX_HEADER_SIZE - count;
+
+      /* emit control sequence */
+      char ctrl[128];
+      int n = snprintf(ctrl, sizeof(ctrl), "\033]66;s=%zu;%.*s\a", level,
+                       (int)text_len, text_start);
+      if (n > 0 && n < (int)sizeof(ctrl)) {
+        pt_str_append(out, ctrl);
+      }
+
+      for (size_t k = 0; k <= level - 1; k++) {
+        pt_str_append_char(out, '\n');
+      }
+
+      p = nl + 1;
+      continue;
+    }
+
+    /* regular character */
+    pt_str_append_char(out, *p);
+    p++;
+  }
+
+  return out;
+}
+
 /**
  * Splits `input` into wrapped lines of at most 80 characters.
  * Allocates and fills an array of `pt_str`, returned via `lines_out`.
@@ -106,11 +157,17 @@ static int pt_split_lines(const pt_str *input, pt_str **lines_out) {
  */
 void pt_render_state(void) {
   pt_clear_screen();
-  pt_str *content = pt_str_new();
-  pt_str_append(content, pt_global_state.content->data);
+  pt_str *content = pt_str_from(pt_global_state.content->data);
 
   if (pt_global_state.is_censored)
     censor_text(content);
+
+  const char *term = getenv("TERM");
+  if (term && strcmp(term, "xterm-kitty") == 0) {
+    pt_str *formatted = pt_format_string(content);
+    pt_str_free(content);
+    content = formatted;
+  }
 
   pt_str *lines;
   int line_count = pt_split_lines(content, &lines);
@@ -137,7 +194,11 @@ void pt_render_state(void) {
   printf("%s", lines[line_count - 1].data);
 
   // Cleanup
+  for (int j = 0; j < line_count; j++) {
+    pt_str_free(&lines[j]);
+  }
   free(lines);
+  pt_str_free(content);
 
   fflush(stdout);
 }

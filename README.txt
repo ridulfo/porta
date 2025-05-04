@@ -7,7 +7,7 @@
                                           
 Dead-simple, ultra-portable word processor
 The intended use case is just writing. There are no efficient Vim-like bindings
-on purpose. This isn’t for editing; that can happen somewhere else.
+on purpose. This is not for editing; that can happen somewhere else.
 
 I made this mainly to learn "old C" and to exploring how portable a terminal
 word processor can be.
@@ -18,7 +18,7 @@ Scope:
 - POSIX.1-2001
 - VT100 terminal control
 
-If $TERM is "xterm-kitty" then it suports text sizing.
+If $TERM is "xterm-kitty" then it supports text sizing.
 See https://sw.kovidgoyal.net/kitty/text-sizing-protocol
 
 Features:
