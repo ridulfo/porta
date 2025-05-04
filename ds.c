@@ -5,7 +5,14 @@
 
 pt_str *pt_str_new(void) {
   pt_str *str = malloc(sizeof(pt_str));
-  pt_str_init(str);
+  if (!str)
+    return NULL;
+
+  if (pt_str_init(str) != 0) {
+    free(str);
+    return NULL;
+  }
+
   return str;
 }
 
@@ -15,12 +22,14 @@ pt_str *pt_str_from(const char *str) {
   return new_str;
 }
 
-void pt_str_init(pt_str *s) {
+int pt_str_init(pt_str *s) {
   s->cap = 16;
   s->len = 0;
   s->data = malloc(s->cap);
-  if (s->data)
-    s->data[0] = '\0';
+  if (!s->data)
+    return -1;
+  s->data[0] = '\0';
+  return 0;
 }
 
 void pt_str_free(pt_str *s) {
@@ -32,8 +41,7 @@ void pt_str_free(pt_str *s) {
 
 int pt_str_append(pt_str *s, const char *suffix) {
   if (!s || !s->data || s->cap == 0) {
-    fprintf(stderr, "pt_str_append: uninitialized pt_str\n");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   size_t suffix_len = strlen(suffix);

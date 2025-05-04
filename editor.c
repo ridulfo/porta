@@ -26,7 +26,7 @@ void pt_init_glob_state(const char *filename) {
   pt_str *content = pt_str_new();
 
   char *fname = strdup(filename);
-  if (!filename) {
+  if (!fname) {
     fprintf(stderr, "Failed to allocate memory for filename\n");
     exit(EXIT_FAILURE);
   }
@@ -47,6 +47,9 @@ void pt_delete_char(void) { pt_str_delete_char(pt_global_state.content); }
 /** Replaces all the alpha-num characters up to the last one with an asterisk */
 static void censor_text(pt_str *text) {
   size_t len = text->len;
+  if (len == 0)
+    return;
+
   for (size_t i = 0; i < len - 1; i++) {
     char *c = &text->data[i];
     if (isalnum(*c)) {
@@ -199,6 +202,7 @@ void pt_render_state(void) {
   }
   free(lines);
   pt_str_free(content);
+  free(content);
 
   fflush(stdout);
 }
@@ -231,8 +235,9 @@ void pt_load_from_file(const char *filename) {
     size_t size = (size_t)ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char *file_data = malloc(size);
+    char *file_data = malloc(size + 1);
     fread(file_data, 1, size, file);
+    file_data[size] = 0;
     fclose(file);
 
     // TODO: this is not great
