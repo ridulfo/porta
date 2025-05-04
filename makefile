@@ -18,8 +18,8 @@ DEBUG_DIR    := debug-build
 SRC          := main.c term.c editor.c ds.c
 OBJ          := $(SRC:%.c=$(BUILD_DIR)/%.o)
 DEBUG_OBJ    := $(SRC:%.c=$(DEBUG_DIR)/%.o)
-BIN          := $(BUILD_DIR)/main
-DEBUG_BIN    := $(DEBUG_DIR)/main
+BIN          := $(BUILD_DIR)/porta
+DEBUG_BIN    := $(DEBUG_DIR)/porta
 
 .PHONY: all clean debug
 
