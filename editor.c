@@ -63,7 +63,7 @@ static pt_str *pt_format_string(const pt_str *input) {
 
   const char *p = input->data;
   while (*p) {
-    if (*p == '#') {
+    if (*p == '#') { // Handle headings
       size_t raw_count = strspn(p, "#");
       char *nl = strchr(p, '\n');
 
@@ -99,6 +99,21 @@ static pt_str *pt_format_string(const pt_str *input) {
 
       p = nl + 1;
       continue;
+    } else if (*p == '*' && *(p + 1) == '*') { // Handle bold text
+      char *end = strstr(p + 2, "**");
+      if (end != NULL) { // Otherwise go back to normal processing
+        p += 2;
+        const char *text_start = p;
+        size_t text_len = (size_t)(end - text_start);
+        char ctrl[128];
+        int n = snprintf(ctrl, sizeof(ctrl), "\033[1m%.*s\033[m", (int)text_len,
+                         text_start);
+        if (n > 0 && n < (int)sizeof(ctrl)) {
+          pt_str_append(out, ctrl);
+        }
+        p = end + 2;
+        continue;
+      }
     }
 
     /* regular character */
