@@ -27,7 +27,7 @@ DEBUG_BIN    := $(DEBUG_DIR)/porta
 TEST_MODULES := ds
 TESTS        := $(TEST_MODULES:%=$(DEBUG_DIR)/%_test)
 
-.PHONY: all debug run clean test
+.PHONY: all debug run clean test install
 
 # default = release build
 all: $(RELEASE_BIN)
@@ -36,6 +36,9 @@ debug: $(DEBUG_BIN)
 
 run: all
 	@./$(RELEASE_BIN)
+
+install: all
+	cp $(RELEASE_BIN) /usr/local/bin
 
 $(RELEASE_BIN): $(RELEASE_OBJS) | $(RELEASE_DIR)
 	$(CC) $^ -o $@

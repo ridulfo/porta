@@ -33,6 +33,9 @@ git clone https://github.com/ridulfo/porta.git
 cd porta
 make
 
+To install:
+make install
+
 This will produce an executable in the build directory.
 
 License:
