@@ -44,21 +44,22 @@ void pt_add_char(char c) { pt_str_append_char(pt_global_state.content, c); }
 
 void pt_delete_char(void) { pt_str_delete_char(pt_global_state.content); }
 
-/** Replaces all the alpha-num characters up to the last one with an asterisk */
-static void censor_text(pt_str *text) {
-  size_t len = text->len;
-  if (len == 0)
-    return;
+static pt_str *pt_format_string(const pt_str *input, const bool censor) {
+  pt_str *out = pt_str_new();
+  size_t len = input->len;
 
-  for (size_t i = 0; i < len - 1; i++) {
-    char *c = &text->data[i];
-    if (isalnum(*c)) {
-      *c = '*';
+  if (censor) {
+    for (size_t i = 0; i < len - 1; i++) {
+      char *c = &input->data[i];
+      if (isalnum(*c)) {
+        *c = '*';
+      }
     }
   }
+  return out;
 }
 
-static pt_str *pt_format_string(const pt_str *input) {
+static pt_str *pt_kitty_format_string(const pt_str *input, const bool censor) {
   pt_str *out = pt_str_new();
 
   const char *p = input->data;
@@ -86,11 +87,15 @@ static pt_str *pt_format_string(const pt_str *input) {
       size_t level = PT_MAX_HEADER_SIZE - count;
 
       /* emit control sequence */
-      char ctrl[128];
-      int n = snprintf(ctrl, sizeof(ctrl), "\033]66;s=%zu;%.*s\a", level,
-                       (int)text_len, text_start);
-      if (n > 0 && n < (int)sizeof(ctrl)) {
-        pt_str_append(out, ctrl);
+      char ctrl_start[128];
+      int n1 =
+          snprintf(ctrl_start, sizeof(ctrl_start), "\033]66;s=%zu;", level);
+      if (n1 > 0 && n1 < (int)sizeof(ctrl_start)) {
+        pt_str_append(out, ctrl_start);
+        for (size_t i = 0; i < text_len; ++i) {
+          pt_str_append_char(out, censor && isalnum(*p) ? '*' : text_start[i]);
+        }
+        pt_str_append_char(out, '\a');
       }
 
       for (size_t k = 0; k <= level - 1; k++) {
@@ -99,10 +104,24 @@ static pt_str *pt_format_string(const pt_str *input) {
 
       p = nl + 1;
       continue;
+    } else if (*p == '*' && *(p + 1) == '*') { // Handle bold text
+      char *end = strstr(p + 2, "**");
+      if (end != NULL) { // Otherwise go back to normal processing
+        p += 2;
+        const char *text_start = p;
+        size_t text_len = (size_t)(end - text_start);
+        pt_str_append(out, "\033[1m");
+        for (size_t i = 0; i < text_len; ++i) {
+          pt_str_append_char(out, censor && isalnum(*p) ? '*' : text_start[i]);
+        }
+        pt_str_append(out, "\033[m");
+        p = end + 2;
+        continue;
+      }
     }
 
     /* regular character */
-    pt_str_append_char(out, *p);
+    pt_str_append_char(out, censor && isalnum(*p) ? '*' : *p);
     p++;
   }
 
@@ -162,12 +181,14 @@ void pt_render_state(void) {
   pt_clear_screen();
   pt_str *content = pt_str_from(pt_global_state.content->data);
 
-  if (pt_global_state.is_censored)
-    censor_text(content);
-
   const char *term = getenv("TERM");
   if (term && strcmp(term, "xterm-kitty") == 0) {
-    pt_str *formatted = pt_format_string(content);
+    pt_str *formatted =
+        pt_kitty_format_string(content, pt_global_state.is_censored);
+    pt_str_free(content);
+    content = formatted;
+  } else {
+    pt_str *formatted = pt_format_string(content, pt_global_state.is_censored);
     pt_str_free(content);
     content = formatted;
   }
