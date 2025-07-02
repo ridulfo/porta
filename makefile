@@ -27,7 +27,12 @@ DEBUG_BIN    := $(DEBUG_DIR)/porta
 TEST_MODULES := ds
 TESTS        := $(TEST_MODULES:%=$(DEBUG_DIR)/%_test)
 
-.PHONY: all debug run clean test install
+# UI test components
+PTY_TEST_OBJS    := $(DEBUG_DIR)/pty_test.o
+UI_TEST_BIN      := $(DEBUG_DIR)/ui_test
+SIMPLE_UI_TEST   := $(DEBUG_DIR)/simple_ui_test
+
+.PHONY: all debug run clean test ui-test install
 
 # default = release build
 all: $(RELEASE_BIN)
@@ -63,6 +68,23 @@ test: $(TESTS)
 	  $$t || exit 1; \
 	done
 	@echo "All tests passed."
+
+# PTY test framework
+$(PTY_TEST_OBJS): pty_test.c pty_test.h | $(DEBUG_DIR)
+	$(CC) $(DEBUG_CFLAGS) -c pty_test.c -o $@
+
+# UI test binaries
+$(UI_TEST_BIN): ui_test.c $(PTY_TEST_OBJS) | $(DEBUG_DIR)
+	$(CC) $(DEBUG_CFLAGS) ui_test.c $(PTY_TEST_OBJS) -lutil -o $@
+
+$(SIMPLE_UI_TEST): simple_ui_test.c $(PTY_TEST_OBJS) | $(DEBUG_DIR)
+	$(CC) $(DEBUG_CFLAGS) simple_ui_test.c $(PTY_TEST_OBJS) -lutil -o $@
+
+ui-test: $(SIMPLE_UI_TEST) debug
+	@echo
+	@echo "==== Running UI tests ===="
+	@./$(SIMPLE_UI_TEST)
+	@echo "All UI tests passed."
 
 $(RELEASE_DIR) $(DEBUG_DIR):
 	mkdir -p $@
