@@ -9,13 +9,13 @@ typedef struct {
   unsigned short rows;
   unsigned short cols;
   pt_str *content;
-  char *filename;
+  pt_str *filename;
   bool is_censored;
 } PTState;
 
 extern PTState pt_global_state;
 
-void pt_init_glob_state(const char *filename);
+void pt_init_glob_state(pt_str *filename);
 void pt_add_char(char c);
 void pt_delete_char(void);
 void pt_render_state(void);
@@ -25,7 +25,7 @@ void pt_splash_screen(void);
 
 void pt_move_cursor(unsigned short row, unsigned short col);
 
-void pt_save_to_file(const char *filename);
-void pt_load_from_file(const char *filename);
+void pt_save_to_file(const pt_str *filename);
+void pt_load_from_file(const pt_str *filename);
 
 #endif

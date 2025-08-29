@@ -18,27 +18,18 @@
 
 PTState pt_global_state = {0};
 
-void pt_init_glob_state(const char *filename) {
+void pt_init_glob_state(pt_str *filename) {
   // Get the rows and columns
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
   pt_str *content = pt_str_new();
 
-  char *fname = malloc(strlen(filename) + 1);
-
-  if (!fname) {
-    fprintf(stderr, "Failed to allocate memory for filename\n");
-    exit(EXIT_FAILURE);
-  }
-
-  strcpy(fname, filename);
-
   pt_global_state = (PTState){
       .rows = w.ws_row,
       .cols = w.ws_col,
       .content = content,
-      .filename = fname,
+      .filename = filename,
       .is_censored = false,
   };
 }
@@ -222,8 +213,8 @@ static char pt_read_key(void) {
   return c;
 }
 
-void pt_save_to_file(const char *filename) {
-  FILE *file = fopen(filename, "w");
+void pt_save_to_file(const pt_str *filename) {
+  FILE *file = fopen(filename->data, "w");
   if (file) {
     fwrite(pt_global_state.content->data, 1, pt_global_state.content->len,
            file);
@@ -233,8 +224,8 @@ void pt_save_to_file(const char *filename) {
   }
 }
 
-void pt_load_from_file(const char *filename) {
-  FILE *file = fopen(filename, "r");
+void pt_load_from_file(const pt_str *filename) {
+  FILE *file = fopen(filename->data, "r");
   if (file) {
     fseek(file, 0, SEEK_END);
     size_t size = (size_t)ftell(file);
@@ -272,7 +263,7 @@ void pt_process_key_press(void) {
     pt_save_to_file(pt_global_state.filename);
 
     pt_move_cursor(1, 1);
-    printf("Saved to %s", pt_global_state.filename);
+    printf("Saved to %s", pt_global_state.filename->data);
     pt_move_cursor(2, 1);
     fflush(stdout);
     sleep(1);
