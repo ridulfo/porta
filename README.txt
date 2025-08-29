@@ -6,8 +6,8 @@
 ██       ██████  ██   ██    ██    ██   ██ 
                                           
 Dead-simple, ultra-portable word processor
-The intended use case is just writing. There are no efficient Vim-like bindings
-on purpose. This is not for editing; that can happen somewhere else.
+The intended use case is just writing. No efficient Vim-like bindings on
+purpose. This is not for editing, only for getting words out of your head.
 
 I made this mainly to learn "old C" and to exploring how portable a terminal
 word processor can be.
@@ -23,9 +23,10 @@ See https://sw.kovidgoyal.net/kitty/text-sizing-protocol
 
 Features:
 ---------
-- censored mode for writing in public
-- centered text
+- censored mode for writing in public places
 - one file at a time
+- centered text
+- append only
 
 Build Instructions:
 -------------------
@@ -36,7 +37,6 @@ make
 To install:
 make install
 
-This will produce an executable in the build directory.
 
 License:
 --------
