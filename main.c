@@ -1,8 +1,8 @@
+#define _POSIX_C_SOURCE 200112L
 #include "editor.h"
 #include "term.h"
 #include <unistd.h>
 
-#define _POSIX_C_SOURCE 200112L
 
 // Good resources
 // https://gist.github.com/delameter/b9772a0bf19032f977b985091f0eb5c1

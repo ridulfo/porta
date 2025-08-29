@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200112L
 #include "editor.h"
 #include "ds.h"
 #include "term.h"

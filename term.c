@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200112L
 #include "term.h"
 #include <locale.h>
 #include <stdio.h>
@@ -5,7 +6,6 @@
 #include <termios.h>
 #include <unistd.h>
 #include <wchar.h>
-#define _POSIX_C_SOURCE 200112L
 
 static struct termios orig_termios;
 
