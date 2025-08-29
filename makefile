@@ -1,5 +1,5 @@
 # Compiler and flags
-CC           := clang
+CC           := gcc
 CFLAGS       := -Wall -Wextra -Wpedantic -Wshadow -Wstrict-prototypes \
                  -Wmissing-prototypes -Wconversion -Wsign-conversion \
                  -Wfloat-equal -Wcast-align -Wcast-qual -Wwrite-strings \

@@ -13,7 +13,7 @@ typedef struct {
   bool is_censored;
 } PTState;
 
-PTState pt_global_state;
+extern PTState pt_global_state;
 
 void pt_init_glob_state(const char *filename);
 void pt_add_char(char c);

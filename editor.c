@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,11 +24,14 @@ void pt_init_glob_state(const char *filename) {
 
   pt_str *content = pt_str_new();
 
-  char *fname = strdup(filename);
+  char *fname = malloc(strlen(filename) + 1);
+
   if (!fname) {
     fprintf(stderr, "Failed to allocate memory for filename\n");
     exit(EXIT_FAILURE);
   }
+
+  strcpy(fname, filename);
 
   pt_global_state = (PTState){
       .rows = w.ws_row,
@@ -172,13 +174,15 @@ void pt_render_state(void) {
     content = formatted;
   }
 
-  pt_str *lines;
+  pt_str *lines = {0};
   int line_count = pt_split_lines(content, &lines);
   if (line_count < 0)
     pt_die("split lines");
 
-  const unsigned short center_row = (pt_global_state.rows - 1) / 2;
-  const unsigned short start_col = (pt_global_state.cols - TEXT_WIDTH) / 2;
+  const unsigned short center_row =
+      (unsigned short)(pt_global_state.rows - 1) / 2;
+  const unsigned short start_col =
+      (unsigned short)(pt_global_state.cols - TEXT_WIDTH) / 2;
   const unsigned short max_rows = center_row;
 
   // Start at the back and print one row at a time
@@ -187,7 +191,7 @@ void pt_render_state(void) {
   while (i < line_count && i < max_rows) {
     unsigned short row_idx = center_row - i;
 
-    unsigned short line_idx = (unsigned short)line_count - 1 - i;
+    unsigned short line_idx = (unsigned short)(line_count - 1 - i);
     pt_move_cursor(row_idx, start_col);
     printf("%s", lines[line_idx].data);
     i++;
@@ -294,7 +298,7 @@ void pt_move_cursor(unsigned short row, unsigned short col) {
 void pt_splash_screen(void) {
 
   // clang-format off
-  const static char *lines[] = {
+  const char *lines[] = {
       "                                \r\n",
       "                                \r\n",
       "    ╔══════════════════════╗    \r\n",
@@ -320,7 +324,7 @@ void pt_splash_screen(void) {
       pt_global_state.rows / 2 - (unsigned short)lines_size / 2;
 
   size_t len = strlen(lines[0]);
-  unsigned short col = (pt_global_state.cols - (unsigned short)len) / 2;
+  unsigned short col = (unsigned short)((pt_global_state.cols - len) / 2);
   for (unsigned short i = 0; i < lines_size; i++) {
     pt_move_cursor(middle_row + i, col);
     printf("%s", lines[i]);
