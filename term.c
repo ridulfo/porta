@@ -52,6 +52,7 @@ static void pt_enable_raw_mode(void) {
 }
 
 void pt_init_term(void) {
+  printf("\n");
 
   if (!setlocale(LC_CTYPE, "")) { // Empty string for all locales
     pt_die("setlocale");
