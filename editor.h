@@ -6,11 +6,11 @@
 #define CTRL_KEY(k) ((k) & 0x1F)
 
 typedef struct {
-  unsigned short rows;
-  unsigned short cols;
-  pt_str *content;
-  pt_str *filename;
-  bool is_censored;
+        unsigned short rows;
+        unsigned short cols;
+        pt_str *content;
+        pt_str *filename;
+        bool is_censored;
 } PTState;
 
 extern PTState pt_global_state;

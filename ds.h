@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 typedef struct {
-  char *data;
-  size_t len;
-  size_t cap;
+        char *data;
+        size_t len;
+        size_t cap;
 } pt_str;
 
 pt_str *pt_str_new(void);
