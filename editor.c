@@ -57,12 +57,14 @@ static pt_str *pt_format_string(const pt_str *input) {
 
         const char *p = input->data;
         while (*p) {
-                if (*p == '#') {
+                if (*p == '\n' && *(p + 1) == '#') {
+                        p++;
                         size_t raw_count = strspn(p, "#");
                         char *nl = strchr(p, '\n');
 
                         // Heading must have a space after # and have a new line
                         if (p[raw_count] != ' ' || (!nl)) {
+                                pt_str_append_char(out, '\n');
                                 pt_str_append_char(out, *p);
                                 p++;
                                 continue;
@@ -85,10 +87,16 @@ static pt_str *pt_format_string(const pt_str *input) {
                         int n = snprintf(ctrl, sizeof(ctrl),
                                          "\033]66;s=%zu;%.*s\a", level,
                                          (int)text_len, text_start);
+
+                        // Add the first new line that was used in the checking
+                        pt_str_append_char(out, '\n');
+
+                        // Add the characters from the control sequence
                         if (n > 0 && n < (int)sizeof(ctrl)) {
                                 pt_str_append(out, ctrl);
                         }
 
+                        // Add the appropriate number of new lines
                         for (size_t k = 0; k <= level - 1; k++) {
                                 pt_str_append_char(out, '\n');
                         }
