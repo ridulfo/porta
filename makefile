@@ -16,7 +16,7 @@ RELEASE_DIR  := $(BUILD_DIR)/release
 DEBUG_DIR    := $(BUILD_DIR)/debug
 
 # Sources, objects, binaries
-SRC          := main.c term.c editor.c ds.c
+SRC          := main.c term.c editor.c ds.c render.c
 
 RELEASE_OBJS := $(SRC:%.c=$(RELEASE_DIR)/%.o)
 DEBUG_OBJS   := $(SRC:%.c=$(DEBUG_DIR)/%.o)
