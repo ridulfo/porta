@@ -22,20 +22,19 @@ void censor_text(pt_str *text) {
 }
 
 /**
- * Takes an input and output string and returns a pointer to how
+ * Takes an input and output string and returns a pointer to after the heading
+ *
+ * `input` needs to point to the first pound (it is fine if turns out to be a
+ * tag)
  */
 static const char *pt_format_heading(const char *input, pt_str *out) {
-
-        input++;
         size_t raw_count = strspn(input, "#");
         char *nl = strchr(input, '\n');
 
         // Heading must have a space after # and have a new line
         if (input[raw_count] != ' ' || (!nl)) {
-                pt_str_append_char(out, '\n');
                 pt_str_append_char(out, *input);
-                input++;
-                return input;
+                return input + 1;
         }
 
         // min(raw_count, PT_MAX_HEADER_SIZE)
@@ -54,9 +53,6 @@ static const char *pt_format_heading(const char *input, pt_str *out) {
         int n = snprintf(ctrl, sizeof(ctrl), "\033]66;s=%zu;%.*s\a", level,
                          (int)text_len, text_start);
 
-        // Add the first new line that was used in the checking
-        pt_str_append_char(out, '\n');
-
         // Add the characters from the control sequence
         if (n > 0 && n < (int)sizeof(ctrl)) {
                 pt_str_append(out, ctrl);
@@ -67,7 +63,7 @@ static const char *pt_format_heading(const char *input, pt_str *out) {
                 pt_str_append_char(out, '\n');
         }
 
-        input = nl + 2;
+        input = nl + 1;
         return input;
 }
 
@@ -103,13 +99,16 @@ pt_str *pt_format_string(const pt_str *input) {
 
         const char *p = input->data;
         while (*p) {
-                if (*p == '\n' && *(p + 1) == '#') {
+                // Either first character in the input is a pound or pound has
+                // been preceeded by a newline
+                if (p[0] == '#' && (p == input->data || *(p - 1) == '\n')) {
                         p = pt_format_heading(p, out);
                         continue;
                 } else if (*p == '*' && *(p + 1) == '*') {
                         p = pt_format_bold(p, out);
                         continue;
                 }
+
                 /* regular character */
                 pt_str_append_char(out, *p);
                 p++;
