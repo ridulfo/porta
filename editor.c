@@ -168,7 +168,11 @@ void pt_load_from_file(const pt_str *filename) {
                 fseek(file, 0, SEEK_SET);
 
                 char *file_data = malloc(size + 1);
-                fread(file_data, 1, size, file);
+                if (fread(file_data, 1, size, file) != size) {
+                        free(file_data);
+                        fclose(file);
+                        return;
+                }
                 file_data[size] = 0;
                 fclose(file);
 
