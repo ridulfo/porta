@@ -39,6 +39,33 @@ void pt_add_char(char c) { pt_str_append_char(pt_global_state.content, c); }
 
 void pt_delete_char(void) { pt_str_delete_char(pt_global_state.content); }
 
+static const char *pt_skip_escape_sequence(const char *input) {
+        // TODO: add char** first and last to parameters so that we can count
+        // what is inside the escaped
+        if (*input != '\033')
+                return input;
+        input++; // Skip ESC
+
+        if (*input == '[') {
+                // ANSI CSI sequence
+                while (*input && strchr("mHJ", *input) == NULL)
+                        input++;
+        } else if (*input == ']') {
+                // OSC sequence (like Kitty)
+                while (*input && *input != '\a' &&
+                       !(*input == '\033' && input[1] == '\\'))
+                        input++;
+                if (*input == '\a')
+                        input++;
+                else if (*input == '\033')
+                        input += 2;
+                return input;
+        }
+        if (*input)
+                input++; // Skip final byte
+        return input;
+}
+
 /**
  * Splits `input` into wrapped lines of at most 80 characters.
  * Allocates and fills an array of `pt_str`, returned via `lines_out`.
@@ -51,7 +78,10 @@ static int pt_split_lines(const pt_str *input, pt_str **lines_out) {
         // First pass: count needed lines
         size_t char_count = 0, lines_count = 1;
         for (const char *c = input->data; *c; ++c) {
-                if (char_count >= TEXT_WIDTH || *c == '\n') {
+                if (*c == '\033') {
+                        const char *after_escape = pt_skip_escape_sequence(c);
+                        c = after_escape - 1;
+                } else if (char_count >= TEXT_WIDTH || *c == '\n') {
                         lines_count++;
                         char_count = 0;
                 } else {
@@ -70,14 +100,32 @@ static int pt_split_lines(const pt_str *input, pt_str **lines_out) {
 
         // Second pass: fill the lines
         size_t line_index = 0;
+        size_t visible_char_count = 0; // Track visible characters separately
         for (const char *c = input->data; *c; ++c) {
                 pt_str *line = &lines[line_index];
-                if (line->len >= TEXT_WIDTH || *c == '\n') {
+
+                if (*c == '\033') {
+                        const char *after_escape = pt_skip_escape_sequence(c);
+                        // Copy entire escape sequence
+                        while (c < after_escape) {
+                                pt_str_append_char(line, *c);
+                                c++;
+                        }
+                        c--; // Adjust for loop increment
+                } else if (visible_char_count >= TEXT_WIDTH || *c == '\n') {
                         line_index++;
+                        if (line_index >= lines_count)
+                                break;          // Prevent overflow
+                        visible_char_count = 0; // Reset visible char count
                         if (*c == '\n')
                                 continue;
+                        line = &lines[line_index]; // Update line pointer
+                        pt_str_append_char(line, *c);
+                        visible_char_count++;
+                } else {
+                        pt_str_append_char(line, *c);
+                        visible_char_count++;
                 }
-                pt_str_append_char(line, *c);
         }
 
         *lines_out = lines;
