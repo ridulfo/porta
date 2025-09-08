@@ -93,6 +93,40 @@ static const char *pt_format_bold(const char *input, pt_str *out) {
 
         return input;
 }
+static const char *pt_format_wikilink(const char *input, pt_str *out) {
+        const char *text_start = input + 2;
+        const char *end_marker = strstr(text_start, "]]");
+        if (end_marker == NULL) {
+                // Did not find enclosing ]]
+                pt_str_append(out, "[[");
+                return input + 2;
+        }
+
+        // Look for the last | character within the wikilink
+        const char *pipe_pos = NULL;
+        const char *p = text_start;
+        while (p < end_marker) {
+                if (*p == '|') {
+                        pipe_pos = p;
+                }
+                p++;
+        }
+
+        // If we found a |, render text after it; otherwise render all text
+        const char *render_start = pipe_pos ? pipe_pos + 1 : text_start;
+        size_t text_len = (size_t)(end_marker - render_start);
+
+        char ctrl[128];
+        int n = snprintf(ctrl, sizeof(ctrl), "\033[4m%.*s\033[0m",
+                         (int)text_len, render_start);
+
+        if (n > 0 && n < (int)sizeof(ctrl)) {
+                pt_str_append(out, ctrl);
+        }
+
+        input = end_marker + 2;
+        return input;
+}
 
 pt_str *pt_format_string(const pt_str *input) {
         pt_str *out = pt_str_new();
@@ -104,8 +138,11 @@ pt_str *pt_format_string(const pt_str *input) {
                 if (p[0] == '#' && (p == input->data || *(p - 1) == '\n')) {
                         p = pt_format_heading(p, out);
                         continue;
-                } else if (*p == '*' && *(p + 1) == '*') {
+                } else if (p[0] == '*' && p[1] == '*') {
                         p = pt_format_bold(p, out);
+                        continue;
+                } else if (p[0] == '[' && p[1] == '[') {
+                        p = pt_format_wikilink(p, out);
                         continue;
                 }
 
