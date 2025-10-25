@@ -16,15 +16,15 @@ int main(int argc, char *argv[]) {
         }
         pt_str *filename = pt_str_from(argv[1]);
         pt_init_term();
-        pt_init_glob_state(filename);
-        pt_load_from_file(filename);
+        PTState *state = pt_new_glob_state(filename);
+        pt_load_from_file(state, filename);
 
-        pt_render_state();
-        pt_splash_screen();
+        pt_render_state(state);
+        pt_splash_screen(state);
 
         while (1) {
-                pt_render_state();
-                pt_process_key_press();
+                pt_render_state(state);
+                pt_process_key_press(state);
         }
 
         return 0;

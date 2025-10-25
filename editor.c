@@ -3,7 +3,6 @@
 #include "ds.h"
 #include "render.h"
 #include "term.h"
-#include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -17,27 +16,28 @@
 #define PT_MAX_HEADER_SIZE 4
 #define TEXT_WIDTH 80
 
-PTState pt_global_state = {0};
-
-void pt_init_glob_state(pt_str *filename) {
+PTState *pt_new_glob_state(pt_str *filename) {
+        PTState *state = calloc(1, sizeof(PTState));
         // Get the rows and columns
         struct winsize w;
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
         pt_str *content = pt_str_new();
 
-        pt_global_state = (PTState){
-                .rows = w.ws_row,
-                .cols = w.ws_col,
-                .content = content,
-                .filename = filename,
-                .is_censored = false,
-        };
+        state->rows = w.ws_row;
+        state->cols = w.ws_col;
+        state->content = content;
+        state->filename = filename;
+        state->is_censored = false;
+
+        return state;
 }
 
-void pt_add_char(char c) { pt_str_append_char(pt_global_state.content, c); }
+void pt_add_char(PTState *state, char c) {
+        pt_str_append_char(state->content, c);
+}
 
-void pt_delete_char(void) { pt_str_delete_char(pt_global_state.content); }
+void pt_delete_char(PTState *state) { pt_str_delete_char(state->content); }
 
 static const char *pt_skip_escape_sequence(const char *input) {
         // TODO: add char** first and last to parameters so that we can count
@@ -136,11 +136,11 @@ static int pt_split_lines(const pt_str *input, pt_str **lines_out) {
  * Render the current state: clear screen, wrap text,
  * then print it centered like a typewriter effect.
  */
-void pt_render_state(void) {
+void pt_render_state(PTState *state) {
         pt_clear_screen();
-        pt_str *content = pt_str_from(pt_global_state.content->data);
+        pt_str *content = pt_str_from(state->content->data);
 
-        if (pt_global_state.is_censored)
+        if (state->is_censored)
                 censor_text(content);
 
         const char *term = getenv("TERM");
@@ -155,10 +155,9 @@ void pt_render_state(void) {
         if (line_count < 0)
                 pt_die("split lines");
 
-        const unsigned short center_row =
-                (unsigned short)(pt_global_state.rows - 1) / 2;
+        const unsigned short center_row = (unsigned short)(state->rows - 1) / 2;
         const unsigned short start_col =
-                (unsigned short)(pt_global_state.cols - TEXT_WIDTH) / 2;
+                (unsigned short)(state->cols - TEXT_WIDTH) / 2;
         const unsigned short max_rows = center_row;
 
         // Start at the back and print one row at a time
@@ -197,18 +196,17 @@ static char pt_read_key(void) {
         return c;
 }
 
-void pt_save_to_file(const pt_str *filename) {
+void pt_save_to_file(PTState *state, const pt_str *filename) {
         FILE *file = fopen(filename->data, "w");
         if (file) {
-                fwrite(pt_global_state.content->data, 1,
-                       pt_global_state.content->len, file);
+                fwrite(state->content->data, 1, state->content->len, file);
                 fclose(file);
         } else {
                 perror("Failed to open file for writing");
         }
 }
 
-void pt_load_from_file(const pt_str *filename) {
+void pt_load_from_file(PTState *state, const pt_str *filename) {
         FILE *file = fopen(filename->data, "r");
         if (file) {
                 fseek(file, 0, SEEK_END);
@@ -225,9 +223,9 @@ void pt_load_from_file(const pt_str *filename) {
                 fclose(file);
 
                 // TODO: this is not great
-                pt_str_free(pt_global_state.content);
-                pt_str_init(pt_global_state.content);
-                pt_str_append(pt_global_state.content, file_data);
+                pt_str_free(state->content);
+                pt_str_init(state->content);
+                pt_str_append(state->content, file_data);
 
                 free(file_data);
         } else {
@@ -235,32 +233,32 @@ void pt_load_from_file(const pt_str *filename) {
         }
 }
 
-void pt_process_key_press(void) {
+void pt_process_key_press(PTState *state) {
         char c = pt_read_key();
         switch (c) {
         case '\r': // Enter key
-                pt_add_char('\n');
+                pt_add_char(state, '\n');
                 break;
         case '\x7f': // Backspace key
-                pt_delete_char();
+                pt_delete_char(state);
                 break;
         case CTRL_KEY('q'): // Ctrl-Q
                 exit(0);
                 break;
         case CTRL_KEY('s'): // Ctrl-S
-                pt_save_to_file(pt_global_state.filename);
+                pt_save_to_file(state, state->filename);
 
                 pt_move_cursor(1, 1);
-                printf("Saved to %s", pt_global_state.filename->data);
+                printf("Saved to %s", state->filename->data);
                 pt_move_cursor(2, 1);
                 fflush(stdout);
                 sleep(1);
                 break;
         case CTRL_KEY('c'):
-                pt_global_state.is_censored = !pt_global_state.is_censored;
+                state->is_censored = !state->is_censored;
                 break;
         default:
-                pt_add_char(c);
+                pt_add_char(state, c);
                 break;
         }
 }
@@ -275,7 +273,7 @@ void pt_move_cursor(unsigned short row, unsigned short col) {
         ((sizeof(arr) / sizeof((arr)[0])) /                                    \
          ((size_t)(!(sizeof(arr) % sizeof((arr)[0])))))
 
-void pt_splash_screen(void) {
+void pt_splash_screen(PTState *state) {
 
         // clang-format off
   const char *lines[] = {
@@ -301,10 +299,10 @@ void pt_splash_screen(void) {
         size_t lines_size = ARRAY_SIZE(lines);
 
         unsigned short middle_row =
-                pt_global_state.rows / 2 - (unsigned short)lines_size / 2;
+                state->rows / 2 - (unsigned short)lines_size / 2;
 
         size_t len = strlen(lines[0]);
-        unsigned short col = (unsigned short)((pt_global_state.cols - len) / 2);
+        unsigned short col = (unsigned short)((state->cols - len) / 2);
         for (unsigned short i = 0; i < lines_size; i++) {
                 pt_move_cursor(middle_row + i, col);
                 printf("%s", lines[i]);
@@ -312,5 +310,5 @@ void pt_splash_screen(void) {
         pt_move_cursor(2, 1);
         fflush(stdout);
         // Wait for a key press
-        pt_process_key_press();
+        pt_process_key_press(state);
 }
