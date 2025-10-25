@@ -91,7 +91,7 @@ void pt_load_from_file(PTState *state, const pt_str *filename) {
         }
 }
 
-void pt_process_key_press(PTState *state) {
+void pt_handle_key_press(PTState *state) {
         char c = pt_read_key();
         switch (c) {
         case '\r': // Enter key
@@ -162,7 +162,7 @@ void pt_splash_screen(PTState *state) {
         pt_move_cursor(2, 1);
         fflush(stdout);
         // Wait for a key press
-        pt_process_key_press(state);
+        pt_handle_key_press(state);
 }
 
 #ifdef PT_TEST

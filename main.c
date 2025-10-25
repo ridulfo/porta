@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
         while (1) {
                 pt_refresh_terminal_state(state);
                 pt_render_state(state);
-                pt_process_key_press(state);
+                pt_handle_key_press(state);
         }
 
         return 0;
