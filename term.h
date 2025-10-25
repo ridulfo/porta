@@ -7,4 +7,6 @@
 void pt_die(const char *s);
 void pt_init_term(void);
 
+void pt_move_cursor(unsigned short row, unsigned short col);
+
 #endif

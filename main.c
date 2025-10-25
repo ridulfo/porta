@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
 #include "ds.h"
 #include "editor.h"
+#include "render.h"
 #include "term.h"
 #include <stdio.h>
 #include <unistd.h>

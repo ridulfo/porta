@@ -61,3 +61,10 @@ void pt_init_term(void) {
 
         pt_enable_raw_mode();
 }
+
+void pt_move_cursor(unsigned short row, unsigned short col) {
+        if (row >= 1 && col >= 1) {
+                printf("\x1b[%d;%dH", row, col);
+        }
+}
+

@@ -1,12 +1,16 @@
 #include <ctype.h>
 #define _POSIX_C_SOURCE 200112L
 #include "ds.h"
+#include "editor.h"
 #include "render.h"
+#include "term.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define PT_MAX_HEADER_SIZE 4
+#define TEXT_WIDTH 80
 
 void censor_text(pt_str *text) {
         size_t len = text->len;
@@ -153,3 +157,152 @@ pt_str *pt_format_string(const pt_str *input) {
 
         return out;
 }
+
+static const char *pt_skip_escape_sequence(const char *input) {
+        // TODO: add char** first and last to parameters so that we can count
+        // what is inside the escaped
+        if (*input != '\033')
+                return input;
+        input++; // Skip ESC
+
+        if (*input == '[') {
+                // ANSI CSI sequence
+                while (*input && strchr("mHJ", *input) == NULL)
+                        input++;
+        } else if (*input == ']') {
+                // OSC sequence (like Kitty)
+                while (*input && *input != '\a' &&
+                       !(*input == '\033' && input[1] == '\\'))
+                        input++;
+                if (*input == '\a')
+                        input++;
+                else if (*input == '\033')
+                        input += 2;
+                return input;
+        }
+        if (*input)
+                input++; // Skip final byte
+        return input;
+}
+
+/**
+ * Splits `input` into wrapped lines of at most 80 characters.
+ * Allocates and fills an array of `pt_str`, returned via `lines_out`.
+ * Returns the number of lines, or 0 on failure.
+ */
+static int pt_split_lines(const pt_str *input, pt_str **lines_out) {
+        if (!input || !lines_out)
+                return -1;
+
+        // First pass: count needed lines
+        size_t char_count = 0, lines_count = 1;
+        for (const char *c = input->data; *c; ++c) {
+                if (*c == '\033') {
+                        const char *after_escape = pt_skip_escape_sequence(c);
+                        c = after_escape - 1;
+                } else if (char_count >= TEXT_WIDTH || *c == '\n') {
+                        lines_count++;
+                        char_count = 0;
+                } else {
+                        char_count++;
+                }
+        }
+
+        // Allocate the array
+        pt_str *lines = calloc(lines_count, sizeof(pt_str));
+        if (!lines)
+                return -1;
+
+        for (size_t i = 0; i < lines_count; i++) {
+                pt_str_init(&lines[i]);
+        }
+
+        // Second pass: fill the lines
+        size_t line_index = 0;
+        size_t visible_char_count = 0; // Track visible characters separately
+        for (const char *c = input->data; *c; ++c) {
+                pt_str *line = &lines[line_index];
+
+                if (*c == '\033') {
+                        const char *after_escape = pt_skip_escape_sequence(c);
+                        // Copy entire escape sequence
+                        while (c < after_escape) {
+                                pt_str_append_char(line, *c);
+                                c++;
+                        }
+                        c--; // Adjust for loop increment
+                } else if (visible_char_count >= TEXT_WIDTH || *c == '\n') {
+                        line_index++;
+                        if (line_index >= lines_count)
+                                break;          // Prevent overflow
+                        visible_char_count = 0; // Reset visible char count
+                        if (*c == '\n')
+                                continue;
+                        line = &lines[line_index]; // Update line pointer
+                        pt_str_append_char(line, *c);
+                        visible_char_count++;
+                } else {
+                        pt_str_append_char(line, *c);
+                        visible_char_count++;
+                }
+        }
+
+        *lines_out = lines;
+        return (int)lines_count;
+}
+
+/**
+ * Render the current state: clear screen, wrap text,
+ * then print it centered like a typewriter effect.
+ */
+void pt_render_state(PTState *state) {
+        pt_clear_screen();
+        pt_str *content = pt_str_from(state->content->data);
+
+        if (state->is_censored)
+                censor_text(content);
+
+        const char *term = getenv("TERM");
+        if (term && strcmp(term, "xterm-kitty") == 0) {
+                pt_str *formatted = pt_format_string(content);
+                pt_str_free(content);
+                free(content);
+                content = formatted;
+        }
+
+        pt_str *lines = {0};
+        int line_count = pt_split_lines(content, &lines);
+        if (line_count < 0)
+                pt_die("split lines");
+
+        const unsigned short center_row = (unsigned short)(state->rows - 1) / 2;
+        const unsigned short start_col =
+                (unsigned short)(state->cols - TEXT_WIDTH) / 2;
+        const unsigned short max_rows = center_row;
+
+        // Start at the back and print one row at a time
+        // move up after every print
+        unsigned short i = 0;
+        while (i < line_count && i < max_rows) {
+                unsigned short row_idx = center_row - i;
+
+                unsigned short line_idx = (unsigned short)(line_count - 1 - i);
+                pt_move_cursor(row_idx, start_col);
+                printf("%s", lines[line_idx].data);
+                i++;
+        }
+        // Print the center line again to get the cursor right
+        pt_move_cursor(center_row, start_col);
+        printf("%s", lines[line_count - 1].data);
+
+        // Cleanup
+        for (int j = 0; j < line_count; j++) {
+                pt_str_free(&lines[j]);
+        }
+        free(lines);
+        pt_str_free(content);
+        free(content);
+
+        fflush(stdout);
+}
+
