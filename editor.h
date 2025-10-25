@@ -14,6 +14,7 @@ typedef struct {
 } PTState;
 
 PTState *pt_new_glob_state(pt_str *filename);
+void pt_refresh_terminal_state(PTState *state);
 
 void pt_process_key_press(PTState *state);
 

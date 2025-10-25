@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
         pt_splash_screen(state);
 
         while (1) {
+                pt_refresh_terminal_state(state);
                 pt_render_state(state);
                 pt_process_key_press(state);
         }

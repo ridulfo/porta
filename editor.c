@@ -17,19 +17,23 @@
 
 PTState *pt_new_glob_state(pt_str *filename) {
         PTState *state = calloc(1, sizeof(PTState));
-        // Get the rows and columns
-        struct winsize w;
-        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
         pt_str *content = pt_str_new();
 
-        state->rows = w.ws_row;
-        state->cols = w.ws_col;
         state->content = content;
         state->filename = filename;
         state->is_censored = false;
+        pt_refresh_terminal_state(state);
 
         return state;
+}
+
+void pt_refresh_terminal_state(PTState *state) {
+        // Get the rows and columns
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        state->rows = w.ws_row;
+        state->cols = w.ws_col;
 }
 
 static void pt_add_char(PTState *state, char c) {
